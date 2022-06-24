@@ -1,0 +1,237 @@
+<html>
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Cube</title>
+    <script src="testing.js"></script>
+    <script src="program.js"></script>
+    <script src="axis.js"></script>
+    <script src="matrix-math.js"></script>
+    <script src="cube.js"></script>
+    <style type="text/css">
+        canvas {
+            display: inline-block;
+            width: 800px;
+            height: 800px;  
+            border: 1px solid black;            
+        }
+        table {
+            margin-top: 15px;
+            border-right: 1px solid black;
+            border-left: 1px solid black;
+        }
+        #controls {
+            float: right;            
+            padding: 0px 15px;
+        }
+        .class {
+            display: inline-block;
+            width: 20px;
+        }
+        #graphics {
+            width: 1100px;
+            margin: 0 auto;
+        }
+        .controlGroup {
+            margin-top: 15px;
+        }
+
+        button {
+            width: 115px;
+            margin: 15px 0px 0px 0px;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        testMatrixContructor();
+        testScale();
+        testMultiplyMatrix();
+        testTranslate();
+        testRotateX();
+        testRotateY();
+        testRotateZ();
+        testVectorConstructor();
+        testVectorDot();
+        testVectorLength();
+        testNormalize();
+        testCrossProduct();
+        testVectorScale();
+    </script>
+    <div id="graphics">
+        <div id="controls">
+            <!-- location sliders -->
+            <div class="controlGroup">
+                <div>Location</div>
+                <div><span class="label">x: </span><input id="xtrans" type="range" min="-0.75" max="0.75" step="0.05" value="0.0" onchange="translateCube()" /></div>
+                <div><span class="label">y: </span><input id="ytrans" type="range" min="-0.75" max="0.75" step="0.05" value="0.0" onchange="translateCube()" /></div>
+                <div><span class="label">z: </span><input id="ztrans" type="range" min="-0.75" max="0.75" step="0.05" value="0.0" onchange="translateCube()" /></div>
+            </div>
+            <!-- scale sliders -->
+            <div class="controlGroup">
+                    <div>Scale</div>
+                    <div><span class="label">x: </span><input id="xscale" type="range" min="0.1" max="1.9" step="0.1" value="1" onchange="scaleCube()" /></div>
+                    <div><span class="label">y: </span><input id="yscale" type="range" min="0.1" max="1.9" step="0.1" value="1" onchange="scaleCube()" /></div>
+                    <div><span class="label">z: </span><input id="zscale" type="range" min="0.1" max="1.9" step="0.1" value="1" onchange="scaleCube()" /></div>
+                </div>
+            <!-- rotation sliders -->
+            <div class="controlGroup">
+                    <div>Rotation Speed</div>
+                    <div><span class="label">x: </span><input id="xrotate" type="range" min="-20.0" max="20.0" step="2" value="0.0" onchange="rotateCube()" /></div>
+                    <div><span class="label">y: </span><input id="yrotate" type="range" min="-20.0" max="20.0" step="2" value="0.0" onchange="rotateCube()" /></div>
+                    <div><span class="label">z: </span><input id="zrotate" type="range" min="-20.0" max="20.0" step="2" value="0.0" onchange="rotateCube()" /></div>
+                    <div><button id="rotateButton" onclick="stopRotate()">Stop Rotation</button></div>
+            </div>
+            <div><button id="resetButton" onclick="reset()">Reset</button></div>
+            <div class="controlGroup">
+                <div>Model Matrix</div>
+                <div id="modelMatrix"></div>
+            </div>
+        </div>
+        <canvas id="drawArea"></canvas>
+    </div>
+    <script>
+
+        /** 
+         * State data needed for animation
+         */
+        let data = performSetup();
+        
+        /**
+         * Processes changes to the translation sliders.
+         */
+        function translateCube() {
+            let x = document.getElementById("xtrans");
+            let y = document.getElementById("ytrans");
+            let z = document.getElementById("ztrans");
+            
+            data.cube.translate(x.value, y.value, z.value);
+        }
+
+        /**
+         * Processes changes to the rotation speed sliders.
+         */
+         function rotateCube() {
+            let x = document.getElementById("xrotate");
+            let y = document.getElementById("yrotate");
+            let z = document.getElementById("zrotate");
+            
+            data.speedx = x.value;
+            data.speedy = y.value;
+            data.speedz = z.value;
+        }
+
+        /**
+         * Processes changes to the scale sliders.
+         */
+         function scaleCube() {
+            let x = document.getElementById("xscale");
+            let y = document.getElementById("yscale");
+            let z = document.getElementById("zscale");
+            
+            data.cube.scale(x.value, y.value, z.value);
+        }
+
+        /**
+         * Resets slides to the default positions, updates the 
+         * transformations.
+         */
+        function reset() {
+            let ranges = document.getElementsByTagName("input");
+            for (let i = 0; i < ranges.length; i++) {
+                ranges[i].value = (ranges[i].max + ranges[i].min) / 2;
+            }
+            translateCube();
+            rotateCube();
+            scaleCube();
+            data.anglex = 0;
+            data.angley = 0;
+            data.anglez = 0;
+
+            document.getElementById("rotateButton").innerText = "Stop Rotation";
+            data.rotating = true;
+        }
+
+        /**
+         * Toggles the rotation of the cube.
+         */
+        function stopRotate() {
+            if (data.rotating) {
+                document.getElementById("rotateButton").innerText = "Start Rotation";
+                data.rotating = false;
+            }
+            else {
+                document.getElementById("rotateButton").innerText = "Stop Rotation";
+                data.rotating = true;
+            }
+        }
+
+        /**
+         * Sets up the WebGL system and creates the state information.
+         */
+        function performSetup() {        
+            let canvas = document.getElementById("drawArea");
+            let gl = canvas.getContext("webgl");
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            let aspect = canvas.width / canvas.height;
+            let shift = -(gl.drawingBufferWidth / aspect - gl.drawingBufferWidth) / 2;
+            gl.viewport(shift, 0, gl.drawingBufferWidth / aspect, gl.drawingBufferHeight);
+
+            gl.clearColor(1, 1, 1, 1);
+            gl.clearDepth(1);
+            gl.enable(gl.DEPTH_TEST);
+
+            return {
+                glContext: gl,
+                rotating: true,
+                axes: new Axes(-1, 1, -1, 1, -1, 1, 10),
+                cube: new Cube(gl),
+                // TODO Set the projection by rotating the matix
+                // -35.264 degrees around the x-axis and 45 degress around the y-axis
+                // scale the axes first so that the z-axis is reflected (they should stay
+                // the same size). The matrix should scale and then rotate.
+                // Modify the next line
+                proj: new Matrix().rotate(-35.264, 45, 0).scale(1, 1, -1),
+                speedx: 0,
+                speedy: 0,
+                speedz: 0,
+                anglex: 0,
+                angley: 0,
+                anglez: 0,
+                lastTime: Date.now()
+            }
+        }
+        
+        /**
+         * Draws the cube and performs the rotation.
+         * 
+         * @param {number} currentTime Current time in ms.
+         */
+        function render(currentTime) {
+            
+            let rotateAmt = (currentTime - data.lastTime) / 1000; // in seconds
+            if (data.rotating) {
+                data.anglex += data.speedx * rotateAmt;
+                data.angley += data.speedy * rotateAmt;
+                data.anglez += data.speedz * rotateAmt;
+                data.cube.rotate(data.anglex, data.angley, data.anglez);
+            }
+
+            data.glContext.clear(data.glContext.COLOR_BUFFER_BIT | data.glContext.DEPTH_BUFFER_BIT);
+
+            data.axes.draw(data.glContext, data.proj);
+        
+            document.getElementById("modelMatrix").innerHTML = data.cube.getModel().asHTML();
+            data.cube.render(data.glContext, data.proj);
+            data.lastTime = currentTime;
+
+            requestAnimationFrame(render);
+        }
+
+        //start animation
+        requestAnimationFrame(render);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "eslint": "^6.1.0",
+    "live-server": "^1.2.1"
+  }
+}
