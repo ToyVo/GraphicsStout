@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Texture</title>
+    <style type="text/css">
+        canvas {
+            display: inline-block;
+            width: 800px;
+            height: 800px;
+            border: 1px solid black;
+        }
+
+        #graphics {
+            width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+<div id="graphics">
+    <canvas id="drawArea"></canvas>
+</div>
+<script>
+
+	/**
+	 * State data needed for animation
+	 */
+	let data = performSetup();
+
+	/**
+	 * Sets up the WebGL system and creates the state information.
+	 */
+	function performSetup() {
+		let canvas = document.getElementById("drawArea");
+		let gl = canvas.getContext("webgl");
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
+
+		let aspect = canvas.width / canvas.height;
+		let shift = -(gl.drawingBufferWidth / aspect - gl.drawingBufferWidth) / 2;
+		gl.viewport(shift, 0, gl.drawingBufferWidth / aspect, gl.drawingBufferHeight);
+
+		gl.clearColor(1, 1, 1, 1);
+		gl.clearDepth(1);
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.enable(gl.CULL_FACE);
+		gl.cullFace(gl.BACK);
+
+		gl.enable(gl.POLYGON_OFFSET_FILL);
+		gl.polygonOffset(1, 1);
+
+		let shapes = [
+			new Dodecahedron(gl),
+			new Cube(gl)
+		];
+
+		shapes[0].translate(-0.6, -.3, 0);
+		shapes[1].translate(0.6, 0.3, 0);
+
+		return {
+			glContext: gl,
+			rotating: true,
+			// axes: new Axes(-1, 1, -1, 1, -1, 1, 10),
+			shapes: shapes,
+			proj: new Matrix(),
+			view: new Matrix().rotate(-35.264, 45, 0).scale(1, 1, -1),
+			speedy: 10,
+			angley: 0,
+			lastTime: performance.now()
+		}
+
+	}
+
+	/**
+	 * Draws the shape and performs the rotation.
+	 *
+	 * @param {number} currentTime Current time in ms.
+	 */
+	function render(currentTime) {
+		data.glContext.clear(data.glContext.COLOR_BUFFER_BIT | data.glContext.DEPTH_BUFFER_BIT);
+		//data.axes.draw(data.glContext, data.proj.mult(data.view));
+
+		let rotateAmt = (currentTime - data.lastTime) / 1000; // in seconds
+		data.angley += data.speedy * rotateAmt;
+		//console.log(data.angley, rotateAmt, currentTime);
+		for (let i = 0; i < data.shapes.length; i++) {
+			data.shapes[i].rotate(0, data.angley, data.angley);
+			data.shapes[i].render(data.glContext, data.proj, data.view);
+		}
+		data.lastTime = currentTime;
+
+		requestAnimationFrame(render);
+	}
+
+	//start animation
+	//console.log(data.lastTime);
+	requestAnimationFrame(render);
+
+</script>
+</body>
+
+</html>

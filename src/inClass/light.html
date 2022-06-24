@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Light</title>
+    <style type="text/css">
+        canvas {
+            display: inline-block;
+            width: 800px;
+            height: 800px;
+            border: 1px solid black;
+        }
+
+        table {
+            margin-top: 15px;
+            border-right: 1px solid black;
+            border-left: 1px solid black;
+        }
+
+        #controls {
+            float: right;
+            padding: 0 15px;
+        }
+
+        .class {
+            display: inline-block;
+            width: 20px;
+        }
+
+        #graphics {
+            width: 1400px;
+            margin: 0 auto;
+        }
+
+        .controlGroup {
+            margin-top: 15px;
+        }
+
+        button {
+            width: 115px;
+            margin: 15px 0 0 0;
+        }
+
+        .label {
+            width: 100px;
+            display: inline-block;
+        }
+
+        #lightProp,
+        #materialProp {
+            float: left;
+        }
+
+        #materialProp {
+            margin-left: 30px;
+        }
+    </style>
+</head>
+
+<body>
+<div id="graphics">
+    <div id="controls">
+        <!-- location sliders -->
+        <div class="controlGroup">
+            <div>Light Location</div>
+            <div><span class="label">Polar Angle: </span><input id="pAngle" max="1" min="-1" onchange="reposition()"
+                                                                step="0.05" type="range" value="0.0"/></div>
+            <div><span class="label">Azimuth: </span><input id="aAngle" max="1" min="-1" onchange="reposition()"
+                                                            step="0.05"
+                                                            type="range" value="0.0"/></div>
+            <div><span class="label">Distance: </span><input id="distance" max="0.25" min="-0.25"
+                                                             onchange="reposition()"
+                                                             step="0.05" type="range" value="0"/></div>
+        </div>
+        <div>
+            <div class="controlGroup" id="lightProp">
+                <!-- scale sliders -->
+                <div>Light Properties</div>
+                <div class="controlGroup">
+                    <div>Ambient Color</div>
+                    <div><span class="label">Red: </span><input id="lightAR" max="1.0" min="0.0" onchange="recolor()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="lightAG" max="1.0" min="0.0" onchange="recolor()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="lightAB" max="1.0" min="0.0" onchange="recolor()"
+                                                                 step="0.05" type="range" value="1"/></div>
+                </div>
+
+                <div class="controlGroup">
+                    <div>Diffuse Color</div>
+                    <div><span class="label">Red: </span><input id="lightDR" max="1.0" min="0.0" onchange="recolor()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="lightDG" max="1.0" min="0.0" onchange="recolor()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="lightDB" max="1.0" min="0.0" onchange="recolor()"
+                                                                 step="0.05" type="range" value="1"/></div>
+                </div>
+                <div class="controlGroup">
+                    <div>Specular Color</div>
+                    <div><span class="label">Red: </span><input id="lightSR" max="1.0" min="0.0" onchange="recolor()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="lightSG" max="1.0" min="0.0" onchange="recolor()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="lightSB" max="1.0" min="0.0" onchange="recolor()"
+                                                                 step="0.05" type="range" value="1"/></div>
+                </div>
+            </div>
+            <div class="controlGroup" id="materialProp">
+                <!-- scale sliders -->
+                <div>Material Properties</div>
+                <div class="controlGroup">
+                    <div>Ambient Color</div>
+                    <div><span class="label">Red: </span><input id="materialAR" max="1.0" min="0.0"
+                                                                onchange="material()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="materialAG" max="1.0" min="0.0"
+                                                                  onchange="material()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="materialAB" max="1.0" min="0.0"
+                                                                 onchange="material()"
+                                                                 step="0.05" type="range" value="1"/></div>
+                </div>
+
+                <div class="controlGroup">
+                    <div>Diffuse Color</div>
+                    <div><span class="label">Red: </span><input id="materialDR" max="1.0" min="0.0"
+                                                                onchange="material()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="materialDG" max="1.0" min="0.0"
+                                                                  onchange="material()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="materialDB" max="1.0" min="0.0"
+                                                                 onchange="material()"
+                                                                 step="0.05" type="range" value="1"/></div>
+                </div>
+                <div class="controlGroup">
+                    <div>Specular Color</div>
+                    <div><span class="label">Red: </span><input id="materialSR" max="1.0" min="0.0"
+                                                                onchange="material()"
+                                                                step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Green: </span><input id="materialSG" max="1.0" min="0.0"
+                                                                  onchange="material()"
+                                                                  step="0.05" type="range" value="1"/></div>
+                    <div><span class="label">Blue: </span><input id="materialSB" max="1.0" min="0.0"
+                                                                 onchange="material()"
+                                                                 step="0.05" type="range" value="1"/></div>
+
+                    <div><span class="label">Shininess: </span><input id="materialShiny" max="1000.0" min="0.0"
+                                                                      onchange="material()" step="20" type="range"
+                                                                      value="0"/></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <button id="resetButton" onclick="reset()">Reset</button>
+        </div>
+
+    </div>
+    <canvas id="drawArea"></canvas>
+</div>
+<script>
+
+	/**
+	 * State data needed for animation
+	 */
+	let data = performSetup();
+
+	/**
+	 * Processes changes to the light sliders.
+	 */
+	function recolor() {
+		let ar = document.getElementById("lightAR").value;
+		let ag = document.getElementById("lightAG").value;
+		let ab = document.getElementById("lightAB").value;
+
+		let dr = document.getElementById("lightDR").value;
+		let dg = document.getElementById("lightDG").value;
+		let db = document.getElementById("lightDB").value;
+
+		let sr = document.getElementById("lightSR").value;
+		let sg = document.getElementById("lightSG").value;
+		let sb = document.getElementById("lightSB").value;
+
+		data.shape.setColors([ar, ag, ab, 1], [dr, dg, db, 1], [sr, sg, sb, 1]);
+	}
+
+	/**
+	 * Processes changes to the position sliders.
+	 */
+	function reposition() {
+		let p = document.getElementById("pAngle");
+		let a = document.getElementById("aAngle");
+		let d = document.getElementById("distance");
+
+		data.shape.setLightPosition(Number.parseFloat(d.value) + Math.sqrt(2),
+			p.value * Math.PI / 2 + Math.PI / 4, a.value * Math.PI + Math.PI / 2);
+	}
+
+	/**
+	 * Processes changes to the material sliders.
+	 */
+	function material() {
+		let ar = document.getElementById("materialAR").value;
+		let ag = document.getElementById("materialAG").value;
+		let ab = document.getElementById("materialAB").value;
+
+		let dr = document.getElementById("materialDR").value;
+		let dg = document.getElementById("materialDG").value;
+		let db = document.getElementById("materialDB").value;
+
+		let sr = document.getElementById("materialSR").value;
+		let sg = document.getElementById("materialSG").value;
+		let sb = document.getElementById("materialSB").value;
+
+		data.shape.setMaterials([ar, ag, ab, 1], [dr, dg, db, 1], [sr, sg, sb, 1]);
+	}
+
+	/**
+	 * Resets slides to the default positions, updates the
+	 * transformations.
+	 */
+	function reset() {
+		let ranges = document.getElementsByTagName("input");
+		for (let i = 0; i < ranges.length; i++) {
+			if (ranges[i].id === "materialShiny") {
+				ranges[i].value = ranges[i].min;
+			} else {
+				ranges[i].value = (ranges[i].max + ranges[i].min) / 2;
+			}
+		}
+
+		reposition();
+		recolor();
+		material();
+
+		data.angley = 0;
+	}
+
+	/**
+	 * Sets up the WebGL system and creates the state information.
+	 */
+	function performSetup() {
+		let canvas = document.getElementById("drawArea");
+		let gl = canvas.getContext("webgl");
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
+
+		let aspect = canvas.width / canvas.height;
+		let shift = -(gl.drawingBufferWidth / aspect - gl.drawingBufferWidth) / 2;
+		gl.viewport(shift, 0, gl.drawingBufferWidth / aspect, gl.drawingBufferHeight);
+
+		gl.clearColor(1, 1, 1, 1);
+		gl.clearDepth(1);
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.enable(gl.CULL_FACE);
+		gl.cullFace(gl.BACK);
+
+		return {
+			glContext: gl,
+			rotating: true,
+			axes: new Axes(-1, 1, -1, 1, -1, 1, 10),
+			shape: new Dodecahedron(gl),
+			proj: new Matrix(),
+			view: new Matrix().rotate(-35.264, 45, 0).scale(1, 1, -1),
+			speedy: 10,
+			angley: 0,
+			lastTime: Date.now()
+		}
+	}
+
+	/**
+	 * Draws the shape and performs the rotation.
+	 *
+	 * @param {number} currentTime Current time in ms.
+	 */
+	function render(currentTime) {
+
+		let rotateAmt = (currentTime - data.lastTime) / 1000; // in seconds
+		data.angley += data.speedy * rotateAmt;
+		data.shape.rotate(0, data.angley, 0);
+
+		data.glContext.clear(data.glContext.COLOR_BUFFER_BIT | data.glContext.DEPTH_BUFFER_BIT);
+
+		data.axes.draw(data.glContext, data.proj.mult(data.view));
+
+		data.shape.render(data.glContext, data.proj, data.view);
+		data.lastTime = currentTime;
+
+		requestAnimationFrame(render);
+	}
+
+	//start animation
+	requestAnimationFrame(render);
+</script>
+</body>
+
+</html>

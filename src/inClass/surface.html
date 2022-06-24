@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Surface</title>
+    <style type="text/css">
+        canvas {
+            display: inline-block;
+            width: 800px;
+            height: 800px;
+            border: 1px solid black;
+        }
+
+        table {
+            margin-top: 15px;
+            border-right: 1px solid black;
+            border-left: 1px solid black;
+        }
+
+        #controls {
+            float: right;
+            padding: 0 15px;
+        }
+
+        .class {
+            display: inline-block;
+            width: 20px;
+        }
+
+        #graphics {
+            width: 1100px;
+            margin: 0 auto;
+        }
+
+        .controlGroup {
+            margin-top: 15px;
+        }
+
+        button {
+            width: 115px;
+            margin: 15px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+<div id="graphics">
+    <div id="controls">
+
+        <div class="controlGroup">
+            <div>Location</div>
+            <div><span class="label">x: </span><input id="xtrans" max="0.75" min="-0.75" onchange="translate()"
+                                                      step="0.05"
+                                                      type="range" value="0.0"/></div>
+            <div><span class="label">y: </span><input id="ytrans" max="0.75" min="-0.75" onchange="translate()"
+                                                      step="0.05"
+                                                      type="range" value="0.0"/></div>
+            <div><span class="label">z: </span><input id="ztrans" max="0.75" min="-0.75" onchange="translate()"
+                                                      step="0.05"
+                                                      type="range" value="0.0"/></div>
+        </div>
+
+        <div class="controlGroup">
+            <div>Scale</div>
+            <div><span class="label">x: </span><input id="xscale" max="1.9" min="0.1" onchange="scale()" step="0.1"
+                                                      type="range"
+                                                      value="1"/></div>
+            <div><span class="label">y: </span><input id="yscale" max="1.9" min="0.1" onchange="scale()" step="0.1"
+                                                      type="range"
+                                                      value="1"/></div>
+            <div><span class="label">z: </span><input id="zscale" max="1.9" min="0.1" onchange="scale()" step="0.1"
+                                                      type="range"
+                                                      value="1"/></div>
+        </div>
+
+        <div class="controlGroup">
+            <div>Rotation</div>
+            <div><span class="label">x: </span><input id="xrotate" max="180" min="-180" onchange="rotate()" step="18"
+                                                      type="range" value="0.0"/></div>
+            <div><span class="label">y: </span><input id="yrotate" max="180" min="-180" onchange="rotate()" step="18"
+                                                      type="range" value="0.0"/></div>
+            <div><span class="label">z: </span><input id="zrotate" max="180" min="-180" onchange="rotate()" step="18"
+                                                      type="range" value="0.0"/></div>
+        </div>
+        <div>
+            <button id="resetButton" onclick="reset()">Reset</button>
+        </div>
+        <div class="controlGroup">
+            <div>Model Matrix</div>
+            <div id="modelMatrix"></div>
+        </div>
+    </div>
+    <canvas id="drawArea"></canvas>
+</div>
+<script>
+
+	/**
+	 * State data needed for animation
+	 */
+	let data = performSetup();
+
+	/**
+	 * Processes changes to the translation sliders.
+	 */
+	function translate() {
+		let x = document.getElementById("xtrans");
+		let y = document.getElementById("ytrans");
+		let z = document.getElementById("ztrans");
+
+		data.surface.translate(x.value, y.value, z.value);
+		render();
+	}
+
+	/**
+	 * Processes changes to the rotation speed sliders.
+	 */
+	function rotate() {
+		let x = document.getElementById("xrotate");
+		let y = document.getElementById("yrotate");
+		let z = document.getElementById("zrotate");
+		console.log(z.value);
+		data.surface.rotate(x.value, y.value, z.value);
+		render();
+	}
+
+	/**
+	 * Processes changes to the scale sliders.
+	 */
+	function scale() {
+		let x = document.getElementById("xscale");
+		let y = document.getElementById("yscale");
+		let z = document.getElementById("zscale");
+
+		data.surface.scale(x.value, y.value, z.value);
+		render();
+	}
+
+	/**
+	 * Resets slides to the default positions, updates the
+	 * transformations.
+	 */
+	function reset() {
+		let ranges = document.getElementsByTagName("input");
+		for (let i = 0; i < ranges.length; i++) {
+			ranges[i].value = (ranges[i].max + ranges[i].min) / 2;
+		}
+		translate();
+		rotate();
+		scale();
+	}
+
+	/**
+	 * Sets up the WebGL system and creates the state information.
+	 */
+	function performSetup() {
+		let canvas = document.getElementById("drawArea");
+		let gl = canvas.getContext("webgl");
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
+
+		let aspect = canvas.width / canvas.height;
+		let shift = -(gl.drawingBufferWidth / aspect - gl.drawingBufferWidth) / 2;
+		gl.viewport(shift, 0, gl.drawingBufferWidth / aspect, gl.drawingBufferHeight);
+
+		gl.clearColor(1, 1, 1, 1);
+		gl.clearDepth(1);
+		gl.enable(gl.DEPTH_TEST);
+
+		// TODO offset
+		gl.enable(gl.POLYGON_OFFSET_FILL);
+		gl.polygonOffset(1, 1);
+		// TODO culling
+		gl.enable(gl.CULL_FACE);
+		gl.cullFace(gl.BACK);
+
+
+		return {
+			glContext: gl,
+			axes: new Axes(-1, 1, -1, 1, -1, 1, 4),
+			surface: new Surface(gl, 20, 50),
+			view: new Matrix().rotate(-45.264, 45, 0).scale(1, 1, -1)
+		}
+	}
+
+	/**
+	 * Draws the surface and performs the rotation.
+	 */
+	function render() {
+		data.glContext.clear(data.glContext.COLOR_BUFFER_BIT | data.glContext.DEPTH_BUFFER_BIT);
+
+		data.axes.draw(data.glContext, data.view);
+
+		document.getElementById("modelMatrix").innerHTML = data.surface.getModel().asHTML();
+		data.surface.render(data.glContext, data.view);
+	}
+
+	render();
+</script>
+</body>
+</html>

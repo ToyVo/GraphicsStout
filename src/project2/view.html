@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View</title>
+    <style type="text/css">
+        canvas {
+            display: inline-block;
+            width: 800px;
+            height: 600px;
+            border: 1px solid black;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        #controls {
+            float: right;
+            padding: 0 15px;
+        }
+
+        #graphics {
+            width: 950px;
+            margin: 0 auto;
+        }
+
+        button {
+            width: 115px;
+            margin: 15px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+<script>
+	testGetSize();
+	testGetLocation();
+	testGetOrientation();
+	testOrtho(1, 2, 3, 4, 5, 6);
+	testOrtho(6, 4, 6, 9, 12, 7);
+	testOrtho(8, 2, 6, 5, 2, 9);
+	testFrustum(1, 2, 3, 4, 5, 6);
+	testFrustum(6, 4, 6, 9, 12, 7);
+	testFrustum(8, 2, 6, 5, 2, 9);
+	testLookAt(new Vector([1, 2, 3]), new Vector([4, 5, 6]), new Vector([7, 8, 9]));
+	testLookAt(new Vector([23, 3, 5]), new Vector([8, 1, 8]), new Vector([9, 2, -9]));
+	testLookAt(new Vector([-1, 12, 93]), new Vector([4, -5, 6]), new Vector([-7, 8, 9]));
+	testViewPoint(new Vector([1, 2, 3]), new Vector([4, 5, 6]), new Vector([7, 8, 9]));
+	testViewPoint(new Vector([23, 3, 5]), new Vector([8, 1, 8]), new Vector([9, 2, -9]));
+	testViewPoint(new Vector([-1, 12, 93]), new Vector([4, -5, 6]), new Vector([-7, 8, 9]));
+</script>
+<div id="graphics">
+    <div id="controls">
+        <!-- Add event, change between shapes -->
+        <div>
+            <div>Shape</div>
+            <div>
+                <input checked="checked" id="ortho" name="projection" onchange="setPerspective(data)" type="radio">
+                <label for="ortho">Orthogonal</label>
+            </div>
+            <div>
+                <input id="perspective" name="projection" onchange="setPerspective(data)" type="radio">
+                <label for="perspective">Perspective</label>
+            </div>
+        </div>
+        <div>
+            <button id="resetButton" onclick="reset()">Reset</button>
+        </div>
+    </div>
+    <canvas id="drawArea"></canvas>
+</div>
+<script>
+
+	/**
+	 * State data needed for drawing everything
+	 */
+	let data = performSetup();
+
+	/**
+	 * Starts rotating the camera when the canvas is grabbed
+	 * @param {MouseEvent} mEvent Mouse event
+	 */
+	function startRotate(mEvent) {
+		data.location = new Vector([mEvent.offsetX, mEvent.offsetY, 0]);
+	}
+
+	/**
+	 * Gets the change in an angle by the amount the mouse moved
+	 * @param {number} newVal New mouse location (x or y)
+	 * @param {number} oldVal Old mouse location (x or y)
+	 *
+	 * @return {number} angle representing the change
+	 */
+	function getAngleChange(newVal, oldVal) {
+		return (newVal - oldVal) / 1000 * Math.PI;
+	}
+
+	/**
+	 * Moves the camera in a sphere around the origin
+	 * @param info state data for the image
+	 * @param {number} theta Rotation of camera in the x,z plane
+	 * @param {number} phi Rotation of the camera in the y direction
+	 */
+	function moveCamera(info, theta, phi) {
+		// x = r cos phi cos theta
+		// y = r sin phi
+		// z = r cos phi sin theta
+		let eye = new Vector([
+			info.viewDistance * Math.cos(phi) * Math.cos(theta),
+			info.viewDistance * Math.sin(phi),
+			info.viewDistance * Math.cos(phi) * Math.sin(theta)
+		]);
+
+		// change camera
+		info.camera.lookAt(eye, new Vector([0, 0, 0]), new Vector([0, 1, 0]));
+		render(info);
+	}
+
+	/**
+	 * Rotate the camera when the canvas is grabbed and the mouse moved
+	 * @param {MouseEvent} mEvent Mouse event
+	 */
+	function rotate(mEvent) {
+		if (data.location) {
+			// convert changeX/Y to angles
+			let dTheta = getAngleChange(mEvent.offsetX, data.location.getX());
+			let dPhi = getAngleChange(mEvent.offsetY, data.location.getY());
+			// console.log(data.location.getData(), mEvent.offsetX, mEvent.offsetY);
+			// console.log(changeX, changeY, dTheta, dPhi);
+			// update stored angles
+			let newTheta = fixAngle(data.theta + dTheta, -Math.PI / 2, 3 * Math.PI / 2);
+			let newPhi = fixAngle(data.phi + dPhi, -Math.PI / 2, Math.PI / 2);
+
+			// convert angles to vectors
+			moveCamera(data, newTheta, newPhi);
+		}
+	}
+
+	/**
+	 * Keeps the angle within a range
+	 * @param {number} angle Angle being checked
+	 * @param {number} min minimum value of the angle
+	 * @param {number} max maximum value of the angle
+	 *
+	 * @return {number} corrected angle
+	 */
+
+	function fixAngle(angle, min, max) {
+		if (angle > max) {
+			return max;
+		}
+		if (angle < min) {
+			return min;
+		}
+		return angle;
+	}
+
+	/**
+	 * Ends rotation of the camera.
+	 * @param {MouseEvent} mEvent Mouse event
+	 */
+	function endRotate(mEvent) {
+		if (data.location) {
+			let dTheta = getAngleChange(mEvent.offsetX, data.location.getX());
+			let dPhi = getAngleChange(mEvent.offsetY, data.location.getY());
+
+			// update stored angles
+			data.theta = fixAngle(data.theta + dTheta, -Math.PI / 2, 3 * Math.PI / 2);
+			data.phi = fixAngle(data.phi + dPhi, -Math.PI / 2, Math.PI / 2);
+
+			data.location = null;
+		}
+	}
+
+	/**
+	 * Zooms the camera in on mouse wheel
+	 * @param {WheelEvent} wEvent Wheel event
+	 */
+	function zoom(wEvent) {
+		data.viewDistance += wEvent.deltaY;
+
+		if (data.viewDistance < 10) {
+			data.viewDistance = 10;
+		}
+		if (data.viewDistance > 50) {
+			data.viewDistance = 50;
+		}
+		moveCamera(data, data.theta, data.phi);
+	}
+
+
+	/**
+	 * Resets controls and image properties to the default values.
+	 */
+	function reset() {
+		document.getElementById("ortho").checked = "checked";
+		setPerspective(data);
+		data.location = null;
+		data.theta = Math.PI / 2;
+		data.phi = 0;
+		data.viewDistance = 30;
+		moveCamera(data, data.theta, data.phi);
+	}
+
+	/**
+	 * Sets the projection for the image (orthogonal or perspective)
+	 * @param info state data for the image
+	 */
+	function setPerspective(info) {
+		let canvas = document.getElementById("drawArea");
+
+		let gl = canvas.getContext("webgl");
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
+
+		let aspect = canvas.width / canvas.height;
+		//let shift = -(gl.drawingBufferWidth / aspect - gl.drawingBufferWidth) / 2;
+		gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+		// get selected radio button
+		// info.proj = info.camera.ortho(-20 * aspect, 20 * aspect, -20, 20, 0, 20);
+
+		let orthoRadio = document.getElementById("ortho");
+		if (orthoRadio.checked) {
+			info.camera.ortho(-20 * aspect, 20 * aspect, -20, 20, 10, 50);
+		} else {
+			info.camera.frustum(-20 * aspect, 20 * aspect, -20, 20, 10, 50);
+		}
+		// console.log(info.proj)
+		render(info);
+	}
+
+	/**
+	 * Gets a random number in a range
+	 * @param {number} min Minimum value
+	 * @param {number} max Maximum value (exclusive)
+	 *
+	 * @return {number} a random number (min <= n < max)
+	 */
+	function randRange(min, max) {
+		return Math.random() * (max - min) + min;
+	}
+
+	/**
+	 * Adds shapes to the image. Adds three fixed shapes and then extra random shapes.
+	 *
+	 * @param info state data for the image
+	 * @param {number} extra number of random shapes to add
+	 *
+	 */
+	function addShapes(info, extra) {
+		let c = new Cube();
+		c.move(5, 0, -5);
+		c.resize(5, 5, 5);
+
+		let t = new Tetra();
+		t.move(-5, 0, -5);
+		t.resize(5, 5, 5);
+
+		let c2 = new Cube();
+		c2.move(-16, 0, 5);
+		c2.resize(5, 5, 5);
+		c2.orient(90, 45, 0);
+
+		info.shapes.push(c, t, c2);
+
+		for (let i = 0; i < extra; i++) {
+			let s = null;
+			if (Math.floor(randRange(0, 2)) === 0) {
+				s = new Cube();
+			} else {
+				s = new Tetra();
+			}
+			s.move(randRange(-10, 10), randRange(-10, 10), randRange(-10, 10));
+			s.resize(randRange(3, 7), randRange(3, 7), randRange(3, 7));
+			s.orient(randRange(-180, 180), randRange(-180, 180), randRange(-180, 180));
+			info.shapes.push(s);
+		}
+	}
+
+	/**
+	 * Sets up the WebGL system and creates the state information.
+	 */
+	function performSetup() {
+		let canvas = document.getElementById("drawArea");
+		let gl = canvas.getContext("webgl");
+
+		canvas.onmousedown = startRotate;
+		canvas.onmouseup = endRotate;
+		canvas.onmousemove = rotate;
+		canvas.onmouseleave = endRotate;
+		canvas.onwheel = zoom;
+
+		let cam = new Camera();
+
+		let d = {
+			glContext: gl,
+			axes: new Axes(-18, 18, -18, 18, -18, 18, 9),
+			shapes: [],
+			camera: cam,
+			location: null,
+			theta: Math.PI / 2,
+			phi: 0,
+			viewDistance: 30
+		};
+
+		setPerspective(d);
+
+		gl.clearColor(1, 1, 1, 1);
+		gl.clearDepth(1);
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.enable(gl.CULL_FACE);
+		gl.cullFace(gl.BACK);
+
+		gl.enable(gl.POLYGON_OFFSET_FILL);
+		gl.polygonOffset(1, 0.01);
+
+		addShapes(d, 2);
+
+		moveCamera(d, d.theta, d.phi);
+
+		return d;
+	}
+
+	/**
+	 * Draws the cube and performs the rotation.
+	 *
+	 * @param info State data
+	 */
+	function render(info) {
+		info.glContext.clear(info.glContext.COLOR_BUFFER_BIT | info.glContext.DEPTH_BUFFER_BIT);
+
+		info.axes.draw(info.glContext, info.camera.getProjection().mult(info.camera.getView()));
+
+		for (let i = 0; i < info.shapes.length; i++) {
+			info.shapes[i].render(info.glContext, info.camera.getProjection(), info.camera.getView());
+		}
+	}
+
+</script>
+</body>
+</html>
